@@ -1,0 +1,142 @@
+<html>
+<head>
+<!--<link rel="stylesheet" type="text/css" href="css/canvas.css" />-->
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
+<style>
+#canvas, #canvasSimpleDiv, #canvasSimpleColorsDiv, #canvasSimpleSizesDiv, #canvasSimpleToolsDiv, #canvasSimpleOutlineDiv {
+	/*border:dashed 1px #557755;*/
+	cursor:wait;
+	width:490px;
+	height:220px;	
+}
+
+#canvas, #canvasSimple, #canvasSimpleColors, #canvasSimpleSizes, #canvasSimpleTools, #canvasSimpleOutline {
+	border:solid 1px #333;
+	cursor:pointer;
+	width:490px;
+	height:220px;
+}
+</style>
+<!--<script type="text/javascript" src="canvas.js"></script>-->
+<script>
+/*
+*Code for socket io at client
+*/
+
+var mouseOperation;
+  var socket = io.connect('http://localhost:8080');
+
+  socket.on('welcome',function(){
+  //connection established
+  });
+  socket.on('message',function(message){
+  mouseOperation(message);
+  });
+  socket.on('heartbeat',function(){
+  //heartbeat
+  });
+  socket.on('error', function (err) {
+    // Sometimes things go wrong!
+    var type = err.type;    // This is the type of error that occurred
+    var message = err.message;    // This is a friendly message that should describe the error
+});
+/*
+*end of code for socket io at client
+*/
+
+/**
+* Code for canvas
+*/
+var canvas;
+$(document).ready(function () {
+  //your code here
+var context = document.getElementById('canvas').getContext("2d");
+var baseColor = '#'+Math.random().toString(16).substr(-6);
+var clickX = new Array();
+var clickY = new Array();
+var clickDrag = new Array();
+var clickColor = new Array();
+var paint;
+
+function addClick(x, y, color,dragging)
+{
+  clickX.push(x);
+  clickY.push(y);
+  clickColor.push(color);
+  clickDrag.push(dragging);
+  
+}
+function redraw(strokestyle){
+  context.clearRect(0, 0, context.canvas.width, context.canvas.height); // Clears the canvas
+ // context.strokeStyle = strokestyle;
+  
+  context.lineJoin = "round";
+  context.lineWidth = 5;
+			
+  for(var i=0; i < clickX.length; i++) {		
+    context.beginPath();
+    if(clickDrag[i] && i){
+      context.moveTo(clickX[i-1], clickY[i-1]);
+     }else{
+       context.moveTo(clickX[i]-1, clickY[i]);
+     }
+     context.lineTo(clickX[i], clickY[i]);
+     context.closePath();
+	 context.strokeStyle = clickColor[i];
+     context.stroke();
+  }
+}
+$('#canvas').mousedown(function(e){
+  var mouseX = e.pageX - this.offsetLeft;
+  var mouseY = e.pageY - this.offsetTop;
+		console.log("mousedown");
+		 paint = true;
+		var message={"parameters":[
+		{"mouseX":mouseX, "mouseY":mouseY, "strokestyle":baseColor}
+		]};
+		socket.emit('message',message);
+		mouseOperation(message);
+
+});
+$('#canvas').mousemove(function(e){
+  if(paint){
+  var mouseX = e.pageX - this.offsetLeft;
+  var mouseY = e.pageY - this.offsetTop;
+  console.log("mousemove");
+  var message = {"parameters":[
+  {"mouseX":mouseX,"mouseY":mouseY,"dragging":true, "strokestyle":baseColor}
+  ]};
+  socket.emit('message',message);
+  mouseOperation(message);
+    
+  }
+});
+$('#canvas').mouseup(function(e){
+  paint = false;
+});
+$('#canvas').mouseleave(function(e){
+  paint = false;
+});
+
+
+mouseOperation=function(message)
+{
+	
+	addClick(message.parameters[0].mouseX, message.parameters[0].mouseY,message.parameters[0].strokestyle, message.parameters[0].dragging);
+    redraw();
+}
+});
+
+
+</script>
+</head>
+
+<body>
+<div id="CanvasSimpleDiv">
+<canvas id="canvas" width="490" height="220"></canvas>
+</div>
+
+</body>
+</html>
+
